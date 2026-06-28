@@ -757,6 +757,9 @@
   <!-- KPI cards -->
   <div class="kpi-grid" id="kpi-grid"></div>
 
+  <!-- Category Breakdown -->
+  <div class="chart-card" id="cat-card" style="display:none"></div>
+
   <!-- Chart -->
   <div class="chart-card">
     <div class="chart-header">
@@ -1858,13 +1861,14 @@ function renderChart() {
   `;
 }
 
-function showTip(e, i, type, val, month) {
+function showTip(e, i, type, val, month, proj = 0) {
   const tip = document.getElementById("chart-tooltip");
+  const color = type === "income" ? "#10B981" : "#F43F5E";
+  const label = type === "income" ? "↑ הכנסות" : "↓ הוצאות";
   tip.innerHTML = `
     <p style="color:#64748B;font-weight:700;margin-bottom:10px;font-size:11px;letter-spacing:0.08em">${month}</p>
-    <p style="color:${type==="income"?"#10B981":"#F43F5E"};font-weight:800;margin:4px 0;font-size:14px">
-      ${type==="income"?"↑ הכנסות":"↓ הוצאות"}: ${fmt(val)}
-    </p>
+    <p style="color:${color};font-weight:800;margin:4px 0;font-size:14px">${label}: ${fmt(val)}</p>
+    ${proj > 0 ? `<p style="color:${color};opacity:0.6;font-weight:700;margin:4px 0;font-size:12px">+ ${fmt(proj)} צפוי</p>` : ''}
   `;
   tip.style.display = "block";
   const rect = e.target.getBoundingClientRect();
@@ -1990,7 +1994,10 @@ async function deleteTx(id) {
     return;
   }
   const clones = transactions.filter(t => t.parentId === id);
-  if (clones.length > 0 && !confirm(`מחיקת עסקה זו תמחק גם ${clones.length} חזרות שלה. להמשיך?`)) return;
+  const confirmMsg = clones.length > 0
+    ? `מחיקת עסקה זו תמחק גם ${clones.length} חזרות שלה. להמשיך?`
+    : `למחוק את "${tx.description}"?`;
+  if (!confirm(confirmMsg)) return;
   const ok = await deleteTransaction(id);
   if (!ok) return;
   // Remove master + all its clones from memory (DB CASCADE handles the DB side)
@@ -3658,9 +3665,188 @@ function showLogin() {
 }
 
 // ── Init ───────────────────────────────────────────────────────
+function renderCategoryBreakdown() {
+  const card = document.getElementById('cat-card');
+  if (!card) return;
+  const byCategory = {};
+  transactions.forEach(t => {
+    const cat = t.category || 'אחר';
+    if (!byCategory[cat]) byCategory[cat] = { income: 0, expense: 0 };
+    const ils = toILS(t.amount, t.currency);
+    if (t.type === 'income') byCategory[cat].income += ils;
+    else byCategory[cat].expense += ils;
+  });
+  const sorted = Object.entries(byCategory)
+    .map(([cat, v]) => ({ cat, total: v.income + v.expense, income: v.income, expense: v.expense }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 7);
+  if (!sorted.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const maxBar = Math.max(...sorted.map(x => Math.max(x.income, x.expense)), 1);
+  card.innerHTML = `
+    <div class="chart-header" style="margin-bottom:20px">
+      <div class="chart-legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#10B981"></span>הכנסות</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#F43F5E"></span>הוצאות</div>
+      </div>
+      <div class="chart-title">
+        <h2>פירוט לפי קטגוריה</h2>
+        <p>הכנסות והוצאות לפי ענף — כל הזמנים</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      ${sorted.map(({ cat, income, expense }) => {
+        const incPct = Math.round(income / maxBar * 100);
+        const expPct = Math.round(expense / maxBar * 100);
+        return `
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
+              <div style="display:flex;gap:14px">
+                ${income > 0 ? `<span style="font-size:12px;color:#059669;font-weight:700">+${fmt(income)}</span>` : ''}
+                ${expense > 0 ? `<span style="font-size:12px;color:#E11D48;font-weight:700">−${fmt(expense)}</span>` : ''}
+              </div>
+              <span style="font-size:13px;font-weight:700;color:#0F172A">${cat}</span>
+            </div>
+            ${income > 0 ? `<div style="height:6px;background:#F1F5F9;border-radius:99px;overflow:hidden;margin-bottom:3px">
+              <div style="height:100%;width:${incPct}%;background:#10B981;border-radius:99px;transition:width 0.5s ease"></div>
+            </div>` : ''}
+            ${expense > 0 ? `<div style="height:6px;background:#F1F5F9;border-radius:99px;overflow:hidden">
+              <div style="height:100%;width:${expPct}%;background:#F43F5E;border-radius:99px;transition:width 0.5s ease"></div>
+            </div>` : ''}
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderChartWithProjection() {
+  const thisYear = new Date().getFullYear().toString();
+  const months = {};
+
+  // Actual DB transactions for this year
+  transactions
+    .filter(t => t.date.startsWith(thisYear))
+    .forEach(t => {
+      const key   = t.date.slice(0, 7);
+      const label = MONTH_NAMES[parseDate(t.date).getMonth()];
+      if (!months[key]) months[key] = { month: label, key, income: 0, expenses: 0, projIncome: 0, projExpenses: 0 };
+      if (t.type === 'income') months[key].income   += toILS(t.amount, t.currency);
+      else                     months[key].expenses += toILS(t.amount, t.currency);
+    });
+
+  // Project future recurring occurrences (masters only, up to year end)
+  const yearEnd = thisYear + '-12-31';
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+  transactions
+    .filter(t => !t.parentId && t.frequency !== 'once' && t.date <= TODAY_STR)
+    .forEach(t => {
+      const endDate = getEndDate(t.endPreset, t.date, t.customEnd) || yearEnd;
+      const projEnd = endDate < yearEnd ? endDate : yearEnd;
+      let cur = new Date(tomorrowStr + 'T00:00:00');
+      const end = new Date(projEnd + 'T00:00:00');
+      let safety = 0;
+      while (cur <= end && safety++ < 500) {
+        const ds = cur.toISOString().split('T')[0];
+        if (ds.startsWith(thisYear)) {
+          const key   = ds.slice(0, 7);
+          const label = MONTH_NAMES[cur.getMonth()];
+          if (!months[key]) months[key] = { month: label, key, income: 0, expenses: 0, projIncome: 0, projExpenses: 0 };
+          if (t.type === 'income') months[key].projIncome   += toILS(t.amount, t.currency);
+          else                     months[key].projExpenses += toILS(t.amount, t.currency);
+        }
+        if      (t.frequency === 'daily')   cur.setDate(cur.getDate() + t.multiplier);
+        else if (t.frequency === 'weekly')  cur.setDate(cur.getDate() + t.multiplier * 7);
+        else if (t.frequency === 'monthly') cur.setMonth(cur.getMonth() + t.multiplier);
+        else if (t.frequency === 'yearly')  cur.setFullYear(cur.getFullYear() + t.multiplier);
+      }
+    });
+
+  const data = Object.values(months).sort((a, b) => a.key.localeCompare(b.key));
+  const chartYearEl = document.getElementById('chart-year');
+  if (chartYearEl) chartYearEl.textContent = thisYear;
+
+  if (data.length === 0) {
+    document.getElementById('chart-svg-wrap').innerHTML =
+      `<div style="text-align:center;padding:60px 0;color:#94A3B8;font-size:14px;font-weight:600">אין נתונים לשנת ${thisYear}</div>`;
+    return;
+  }
+
+  const wrap = document.getElementById('chart-svg-wrap');
+  const W = wrap.clientWidth || 800;
+  const H = 260;
+  const PAD = { top: 20, right: 60, bottom: 36, left: 16 };
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+
+  const maxVal = Math.max(...data.flatMap(d => [d.income + d.projIncome, d.expenses + d.projExpenses]), 1);
+  const barW   = Math.min(32, (innerW / data.length) * 0.35);
+  const gap    = barW * 0.4;
+  const groupW = barW * 2 + gap;
+  const colW   = innerW / data.length;
+  const scaleY = v => innerH - (v / maxVal) * innerH;
+  const yTicks = 4;
+
+  let gridLines = '';
+  for (let i = 0; i <= yTicks; i++) {
+    const y = PAD.top + (i / yTicks) * innerH;
+    const val = maxVal * (1 - i / yTicks);
+    gridLines += `
+      <line x1="${PAD.left}" y1="${y}" x2="${W - PAD.right}" y2="${y}" stroke="#F1F5F9" stroke-width="1"/>
+      <text x="${W - PAD.right + 6}" y="${y + 4}" fill="#CBD5E1" font-size="11" font-family="Heebo">₪${(val / 1000).toFixed(0)}K</text>
+    `;
+  }
+
+  let bars = '';
+  let xLabels = '';
+  data.forEach((d, i) => {
+    const cx  = PAD.left + i * colW + colW / 2;
+    const x1  = cx - groupW / 2;
+    const x2  = cx + gap / 2 + barW / 2;
+    const r   = 4;
+    const totalInc = d.income + d.projIncome;
+    const totalExp = d.expenses + d.projExpenses;
+    const ih  = Math.max((totalInc / maxVal) * innerH, 2);
+    const eh  = Math.max((totalExp / maxVal) * innerH, 2);
+    const iy  = PAD.top + scaleY(totalInc);
+    const ey  = PAD.top + scaleY(totalExp);
+
+    // Projection portion height
+    const pih = Math.max((d.projIncome / maxVal) * innerH, 0);
+    const peh = Math.max((d.projExpenses / maxVal) * innerH, 0);
+
+    bars += `
+      <rect x="${x1}" y="${iy}" width="${barW}" height="${ih - pih}" fill="#10B981" rx="${r}"
+        onmouseenter="showTip(event,${i},'income',${d.income},'${d.month}',${d.projIncome})"
+        onmouseleave="hideTip()" style="cursor:pointer" />
+      ${pih > 0 ? `<rect x="${x1}" y="${iy}" width="${barW}" height="${pih}" fill="#10B981" opacity="0.35" rx="${r}"
+        stroke="#10B981" stroke-width="1.5" stroke-dasharray="4,3"
+        onmouseenter="showTip(event,${i},'income',${d.income},'${d.month}',${d.projIncome})"
+        onmouseleave="hideTip()" style="cursor:pointer" />` : ''}
+      <rect x="${x2}" y="${ey}" width="${barW}" height="${eh - peh}" fill="#F43F5E" rx="${r}"
+        onmouseenter="showTip(event,${i},'expense',${d.expenses},'${d.month}',${d.projExpenses})"
+        onmouseleave="hideTip()" style="cursor:pointer" />
+      ${peh > 0 ? `<rect x="${x2}" y="${ey}" width="${barW}" height="${peh}" fill="#F43F5E" opacity="0.35" rx="${r}"
+        stroke="#F43F5E" stroke-width="1.5" stroke-dasharray="4,3"
+        onmouseenter="showTip(event,${i},'expense',${d.expenses},'${d.month}',${d.projExpenses})"
+        onmouseleave="hideTip()" style="cursor:pointer" />` : ''}
+    `;
+    xLabels += `<text x="${cx}" y="${H - 8}" text-anchor="middle" fill="#94A3B8" font-size="12" font-weight="600" font-family="Heebo">${d.month}</text>`;
+  });
+
+  wrap.innerHTML = `
+    <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+      ${gridLines}${bars}${xLabels}
+    </svg>
+  `;
+}
+
 function renderAll() {
   renderKPI();
-  renderChart();
+  renderCategoryBreakdown();
+  renderChartWithProjection();
   renderTransactions();
 }
 
@@ -3670,7 +3856,7 @@ document.getElementById("today-date").textContent =
   d.toLocaleDateString("he-IL", { month:"long", day:"numeric", year:"numeric" });
 
 // Re-render chart on resize
-window.addEventListener("resize", () => renderChart());
+window.addEventListener("resize", () => renderChartWithProjection());
 
 // Init modal defaults
 document.getElementById("btn-income").className = "type-btn active-income";
