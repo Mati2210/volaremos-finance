@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Volaremos — פיננסים</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Heebo', 'Assistant', system-ui, sans-serif;
+    background: #F1F5F9; min-height: 100vh; direction: rtl;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  input, select { font-family: inherit; }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+  /* ── header ── */
+  #app-header {
+    background: white; border-bottom: 1px solid #E2E8F0;
+    position: sticky; top: 0; z-index: 30;
+  }
+  .header-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 24px;
+    display: flex; align-items: center; justify-content: space-between; height: 64px;
+  }
+  .logo-img { height: 38px; width: auto; object-fit: contain; }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .date-badge { display: flex; align-items: center; gap: 6px; color: #94A3B8; font-size: 13px; }
+  .btn-add {
+    display: flex; align-items: center; gap: 8px;
+    background: #1B2B4B; color: white; padding: 9px 18px;
+    border-radius: 12px; border: none; font-size: 13px; font-weight: 700;
+    letter-spacing: 0.02em; transition: background 0.2s;
+  }
+  .btn-add:hover { background: #243d6d; }
+
+  /* ── main ── */
+  main { max-width: 1200px; margin: 0 auto; padding: 32px 24px; display: flex; flex-direction: column; gap: 24px; }
+
+  /* ── KPI cards ── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+  .kpi-card {
+    background: white; border-radius: 20px; padding: 26px;
+    border: 1px solid #F1F5F9; position: relative; overflow: hidden;
+  }
+  .kpi-card.dark { background: #1B2B4B; border: none; }
+  .kpi-card.dark-red { background: #9F1239; border: none; }
+  .kpi-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .kpi-label { color: #94A3B8; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-align: right; }
+  .kpi-label-dark { color: #64748B; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-align: right; }
+  .kpi-value { font-size: 34px; font-weight: 900; margin-top: 10px; letter-spacing: -0.02em; direction: ltr; color: #0F172A; }
+  .kpi-icon {
+    width: 46px; height: 46px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .kpi-footer { display: flex; align-items: center; gap: 6px; margin-top: 18px; justify-content: flex-end; }
+  .kpi-bar { position: absolute; bottom: 0; left: 0; width: 88px; height: 4px; border-radius: 0 4px 0 0; }
+  .margin-row { display: flex; justify-content: space-between; margin-bottom: 7px; }
+  .margin-track { height: 6px; background: rgba(255,255,255,0.1); border-radius: 99px; }
+  .margin-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+  .wings-watermark {
+    position: absolute; left: 0; top: 0; width: 80%; height: 100%;
+    opacity: 0.07; pointer-events: none;
+  }
+
+  /* ── chart ── */
+  .chart-card { background: white; border-radius: 20px; padding: 28px; border: 1px solid #F1F5F9; }
+  .chart-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+  .chart-legend { display: flex; gap: 20px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #64748B; font-weight: 600; }
+  .chart-title { text-align: right; }
+  .chart-title h2 { font-size: 18px; font-weight: 900; color: #0F172A; }
+  .chart-title p { font-size: 13px; color: #94A3B8; margin-top: 4px; }
+  #chart-svg-wrap { height: 260px; }
+
+  /* ── transactions ── */
+  .tx-card { background: white; border-radius: 20px; border: 1px solid #F1F5F9; overflow: hidden; }
+  .tx-header { padding: 22px 28px; border-bottom: 1px solid #F1F5F9; }
+  .tx-header-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .filter-bar { display: flex; background: #F1F5F9; border-radius: 13px; padding: 4px; gap: 3px; }
+  .filter-btn {
+    padding: 7px 16px; border-radius: 10px; border: none;
+    font-size: 12px; font-weight: 700; transition: all 0.15s;
+    background: transparent; color: #94A3B8;
+  }
+  .filter-btn.active { background: white; color: #0F172A; box-shadow: 0 1px 5px rgba(0,0,0,0.08); }
+  .tx-table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    padding: 11px 20px; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.08em; color: #CBD5E1; border-bottom: 1px solid #F1F5F9;
+    white-space: nowrap; text-align: right;
+  }
+  th.amount-col { text-align: left; }
+  tr.tx-row td { border-bottom: 1px solid #F8FAFC; transition: background 0.1s; }
+  tr.tx-row:hover td { background: #FAFBFD; }
+  tr.tx-row:hover .del-btn { opacity: 1 !important; }
+  td { padding: 15px 20px; }
+  .td-date { font-size: 13px; color: #64748B; white-space: nowrap; text-align: right; }
+  .td-desc { font-size: 14px; font-weight: 700; color: #0F172A; text-align: right; }
+  .td-freq-sub { font-size: 11px; color: #94A3B8; font-weight: 600; margin-top: 2px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
+    border-radius: 8px; font-size: 12px; font-weight: 600;
+  }
+  .chip-cat { background: #F1F5F9; color: #475569; }
+  .chip-income { background: #ECFDF5; color: #059669; font-weight: 700; }
+  .chip-expense { background: #FFF1F2; color: #E11D48; font-weight: 700; }
+  .td-amount { text-align: left; }
+  .amount-val { font-size: 15px; font-weight: 900; letter-spacing: -0.01em; direction: ltr; display: inline-block; }
+  .del-btn {
+    opacity: 0; transition: opacity 0.15s, background 0.15s;
+    width: 32px; height: 32px; border-radius: 8px; border: none;
+    background: transparent; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; color: #94A3B8;
+  }
+  .del-btn:hover { background: #FFF1F2 !important; color: #F43F5E !important; }
+  .empty-row td { padding: 64px 20px; text-align: center; color: #CBD5E1; font-size: 14px; }
+
+  /* ── modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .modal-backdrop {
+    position: absolute; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(5px);
+  }
+  .modal-sheet {
+    position: relative; background: white; z-index: 10;
+    width: 100%; max-width: 520px;
+    border-radius: 24px 24px 0 0;
+    box-shadow: 0 -24px 64px rgba(0,0,0,0.25);
+    max-height: 92vh; overflow-y: auto;
+  }
+  .modal-drag { display: flex; justify-content: center; padding: 14px 0 4px; }
+  .drag-handle { width: 40px; height: 4px; border-radius: 99px; background: #E2E8F0; }
+  .modal-head {
+    padding: 8px 24px 18px; border-bottom: 1px solid #F1F5F9;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .btn-close {
+    width: 36px; height: 36px; border-radius: 10px; border: none;
+    background: #F1F5F9; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; color: #64748B;
+  }
+  .modal-body { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  .field-label {
+    display: block; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: #94A3B8; margin-bottom: 8px; text-align: right;
+  }
+  .field-input {
+    width: 100%; padding: 12px 16px; border-radius: 12px;
+    border: 1.5px solid #E2E8F0; font-size: 14px; font-weight: 600;
+    color: #0F172A; outline: none;
+    background: white; transition: border-color 0.15s;
+    font-family: inherit; direction: rtl; text-align: right;
+  }
+  .field-input:focus { border-color: #1B2B4B; }
+  .field-input.error { border-color: #F43F5E; }
+  .field-error {
+    color: #F43F5E; font-size: 11px; margin-top: 5px; font-weight: 700;
+    display: flex; align-items: center; gap: 4px; justify-content: flex-end;
+  }
+  .prefix-wrap { position: relative; }
+  .prefix-sym {
+    position: absolute; left: 16px; top: 50%;
+    transform: translateY(-50%); color: #94A3B8; font-weight: 700;
+    pointer-events: none;
+  }
+  .prefix-input { padding-left: 32px !important; }
+  .select-wrap { position: relative; }
+  .select-arrow {
+    position: absolute; left: 14px; top: 50%;
+    transform: translateY(-50%); color: #94A3B8; pointer-events: none;
+  }
+  .field-select { appearance: none; padding-left: 40px !important; }
+
+  /* type toggle */
+  .type-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    background: #F1F5F9; border-radius: 14px; padding: 5px;
+  }
+  .type-btn {
+    padding: 12px; border-radius: 10px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 800; transition: all 0.15s;
+    background: transparent; color: #94A3B8; font-family: inherit;
+  }
+  .type-btn.active-income { background: #10B981; color: white; box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
+  .type-btn.active-expense { background: #F43F5E; color: white; box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
+
+  /* frequency buttons */
+  .freq-wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+  .freq-btn {
+    padding: 9px 16px; border-radius: 11px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 700; transition: all 0.2s;
+    background: #F8FAFC; color: #475569; font-family: inherit;
+  }
+  .freq-btn.active { background: #1B2B4B; color: white; box-shadow: 0 4px 14px rgba(27,43,75,0.25); transform: translateY(-1px); }
+
+  /* stepper */
+  .stepper {
+    display: inline-flex; align-items: center;
+    border: 1.5px solid #E2E8F0; border-radius: 12px; overflow: hidden; background: white;
+  }
+  .stepper-btn {
+    width: 38px; height: 38px; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; color: #64748B; transition: all 0.15s; font-size: 18px;
+  }
+  .stepper-btn:hover { background: #F1F5F9; color: #0F172A; }
+  .stepper-div { width: 1px; height: 22px; background: #E2E8F0; }
+  .stepper-val {
+    width: 52px; text-align: center; border: none; font-size: 20px; font-weight: 900;
+    color: #0F172A; outline: none; padding: 6px 0;
+    font-family: inherit; background: transparent;
+  }
+  .quick-chips { display: flex; gap: 6px; }
+  .quick-chip {
+    width: 34px; height: 34px; border-radius: 9px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 800; transition: all 0.15s; font-family: inherit;
+    background: #F1F5F9; color: #64748B;
+  }
+  .quick-chip.active { color: white; }
+
+  /* preset chips */
+  .preset-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .preset-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 13px; border-radius: 10px; cursor: pointer;
+    font-size: 12px; font-weight: 700; transition: all 0.2s;
+    border: 2px solid #E2E8F0; background: white; color: #64748B; font-family: inherit;
+  }
+  .preset-badge { font-weight: 900; }
+
+  /* computed end date pill */
+  .end-pill {
+    display: inline-flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    padding: 8px 12px; border-radius: 10px;
+  }
+
+  /* currency buttons */
+  .cur-btn {
+    flex: 1; padding: 8px 0; border-radius: 10px; border: 1.5px solid #E2E8F0;
+    background: white; color: #64748B; font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s; font-family: inherit;
+  }
+  .cur-btn.active {
+    background: #1B2B4B; color: white; border-color: #1B2B4B;
+    box-shadow: 0 2px 8px rgba(27,43,75,0.25);
+  }
+  .cur-btn:not(.active):hover { border-color: #94A3B8; color: #0F172A; }
+
+  /* occ badge */
+  .occ-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 14px; background: #1B2B4B; border-radius: 9px;
+  }
+
+  /* reveal animation */
+  .reveal { overflow: hidden; transition: max-height 0.42s cubic-bezier(0.4,0,0.2,1), opacity 0.28s ease; }
+  .reveal.hidden { max-height: 0; opacity: 0; pointer-events: none; }
+  .reveal.shown { max-height: 800px; opacity: 1; }
+
+  /* action buttons */
+  .action-row { display: flex; gap: 10px; margin-top: 4px; }
+  .btn-reset {
+    padding: 11px 16px; border-radius: 12px; border: 1.5px solid #E2E8F0;
+    background: white; color: #64748B; font-size: 13px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; gap: 8px;
+    transition: all 0.15s; flex-shrink: 0; font-family: inherit;
+  }
+  .btn-reset:hover { border-color: #94A3B8; color: #0F172A; }
+  .btn-save {
+    flex: 1; padding: 14px; border-radius: 14px; border: none; cursor: pointer;
+    font-size: 14px; font-weight: 800; letter-spacing: 0.04em; transition: all 0.2s;
+    color: white; font-family: inherit;
+  }
+  .btn-save:hover { opacity: 0.9; }
+
+  /* tooltip */
+  .chart-tooltip {
+    background: #0F172A; border: 1px solid #1E293B; border-radius: 14px;
+    padding: 12px 18px; font-size: 13px; box-shadow: 0 24px 48px rgba(0,0,0,0.45);
+    pointer-events: none; position: absolute; display: none; z-index: 10;
+    min-width: 160px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header id="app-header">
+  <div class="header-inner">
+    <div>
+      <img src="./volaremos-logo.png" alt="Volaremos" style="height:42px;width:auto;object-fit:contain;flex-shrink:0" />
+    </div>
+    <div class="header-right">
+      <div class="date-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span id="today-date"></span>
+      </div>
+      <button class="btn-add" onclick="openModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        הוסף עסקה
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- DB status banners -->
+<div id="db-loading" style="display:none;position:fixed;top:64px;left:0;right:0;z-index:40;background:#1B2B4B;color:white;text-align:center;padding:10px;font-size:13px;font-weight:700">
+  ⏳ טוען נתונים מהמסד...
+</div>
+<div id="db-error" style="display:none;position:fixed;top:64px;left:0;right:0;z-index:40;background:#E11D48;color:white;text-align:center;padding:10px;font-size:13px;font-weight:700"></div>
+
+<main>
+  <!-- KPI cards -->
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <!-- Chart -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-legend">
+        <div class="legend-item"><span class="legend-dot" style="background:#10B981"></span>הכנסות</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#F43F5E"></span>הוצאות</div>
+      </div>
+      <div class="chart-title">
+        <h2>סקירת תזרים מזומנים</h2>
+        <p>הכנסות מול הוצאות לפי חודש</p>
+      </div>
+    </div>
+    <div id="chart-svg-wrap"></div>
+    <div class="chart-tooltip" id="chart-tooltip"></div>
+  </div>
+
+  <!-- Transactions -->
+  <div class="tx-card">
+    <div class="tx-header">
+      <div class="tx-header-row">
+        <div class="filter-bar" id="filter-bar">
+          <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">הכל</button>
+          <button class="filter-btn" data-filter="income" onclick="setFilter('income')">הכנסות</button>
+          <button class="filter-btn" data-filter="expense" onclick="setFilter('expense')">הוצאות</button>
+        </div>
+        <div style="text-align:right">
+          <h2 style="font-size:18px;font-weight:900;color:#0F172A">ספר עסקאות</h2>
+          <p id="tx-count" style="font-size:13px;color:#94A3B8;margin-top:4px"></p>
+        </div>
+      </div>
+    </div>
+    <div class="tx-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>תאריך</th><th>תיאור</th><th>קטגוריה</th><th>סוג</th>
+            <th class="amount-col">סכום</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tx-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- ── Modal ── -->
+<div class="modal-overlay" id="modal" style="display:none">
+  <div class="modal-backdrop" onclick="closeModal()"></div>
+  <div class="modal-sheet">
+    <div class="modal-drag"><div class="drag-handle"></div></div>
+    <div class="modal-head">
+      <button class="btn-close" onclick="closeModal()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div style="text-align:right">
+        <h3 style="font-size:18px;font-weight:900;color:#0F172A">הוסף עסקה</h3>
+        <p style="font-size:13px;color:#94A3B8;margin-top:4px">רשום הכנסה או הוצאה חדשה</p>
+      </div>
+    </div>
+    <div class="modal-body">
+
+      <!-- Type -->
+      <div>
+        <label class="field-label">סוג עסקה</label>
+        <div class="type-grid">
+          <button class="type-btn" id="btn-income" onclick="setType('income')">↑ הכנסה</button>
+          <button class="type-btn" id="btn-expense" onclick="setType('expense')">↓ הוצאה</button>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div>
+        <label class="field-label">תיאור</label>
+        <input id="f-desc" class="field-input" type="text" placeholder="לדוגמה: חשבונית לקוח #0042"
+          oninput="clearErr('desc')" onkeydown="if(event.key==='Enter') handleAdd()" />
+        <div class="field-error" id="err-desc" style="display:none"></div>
+      </div>
+
+      <!-- Amount + Currency -->
+      <div>
+        <label class="field-label" id="amount-label">סכום (₪)</label>
+        <div class="prefix-wrap">
+          <span class="prefix-sym" id="currency-sym">₪</span>
+          <input id="f-amount" class="field-input prefix-input" type="number" placeholder="0.00" min="0"
+            oninput="clearErr('amount'); updateRatePreview()" onkeydown="if(event.key==='Enter') handleAdd()" />
+        </div>
+        <div class="field-error" id="err-amount" style="display:none"></div>
+        <!-- Currency toggle -->
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="cur-ILS" class="cur-btn active" onclick="setCurrency('ILS')">₪ שקל</button>
+          <button id="cur-USD" class="cur-btn"        onclick="setCurrency('USD')">$ דולר</button>
+          <button id="cur-EUR" class="cur-btn"        onclick="setCurrency('EUR')">€ יורו</button>
+        </div>
+        <!-- Live rate preview -->
+        <div id="rate-preview" style="display:none;margin-top:8px;font-size:12px;color:#64748B;
+             font-weight:600;text-align:right"></div>
+      </div>
+
+      <!-- Category -->
+      <div>
+        <label class="field-label">קטגוריה</label>
+        <div class="select-wrap">
+          <select id="f-category" class="field-input field-select">
+            <option>הכנסות לקוחות</option><option>ייעוץ</option><option>שיווק</option>
+            <option>תפעול</option><option>תוכנה</option><option>נסיעות</option>
+            <option>שירותים</option><option>אחר</option>
+          </select>
+          <svg class="select-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <!-- Date -->
+      <div>
+        <label class="field-label">תאריך</label>
+        <input id="f-date" class="field-input" type="date" />
+      </div>
+
+      <!-- Performer -->
+      <div>
+        <label class="field-label">מבוצע על ידי</label>
+        <input id="f-performer" class="field-input" type="text" placeholder="לדוגמה: דנה, צוות שיווק, מחלקת כספים" />
+      </div>
+
+      <!-- Frequency -->
+      <div>
+        <label class="field-label">תדירות</label>
+        <div class="freq-wrap" id="freq-wrap"></div>
+      </div>
+
+      <!-- Recurrence interval (revealed when recurring) -->
+      <div class="reveal hidden" id="section-interval">
+        <label class="field-label">חזרה כל</label>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div class="stepper">
+            <button class="stepper-btn" onclick="stepMult(-1)">−</button>
+            <div class="stepper-div"></div>
+            <input class="stepper-val" type="number" id="f-mult" value="1" min="1" max="99"
+              oninput="setMult(parseInt(this.value))" />
+            <div class="stepper-div"></div>
+            <button class="stepper-btn" onclick="stepMult(1)">+</button>
+          </div>
+          <span id="mult-unit" style="font-size:16px;font-weight:800;color:#1B2B4B;min-width:70px"></span>
+          <div class="quick-chips" id="quick-chips"></div>
+        </div>
+      </div>
+
+      <!-- End date (revealed when recurring) -->
+      <div class="reveal hidden" id="section-end">
+        <label class="field-label">תאריך סיום</label>
+        <div class="preset-wrap" id="preset-wrap"></div>
+        <div id="end-pill-wrap"></div>
+        <div class="reveal hidden" id="section-custom-end">
+          <input id="f-custom-end" class="field-input" type="date" style="margin-bottom:8px"
+            oninput="clearErr('customEnd'); updateOcc()" />
+          <div class="field-error" id="err-customEnd" style="display:none"></div>
+        </div>
+        <div id="occ-badge-wrap"></div>
+      </div>
+
+      <!-- Actions -->
+      <div class="action-row">
+        <button class="btn-reset" onclick="resetForm()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+          איפוס
+        </button>
+        <button class="btn-save" id="btn-save" onclick="handleAdd()">שמור עסקה</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Supabase ───────────────────────────────────────────────────
+const SUPABASE_URL = 'https://jlqshkbggaejynrrgqdz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_tBBPx6PidmPeZ4IfiNYDng_mRWD63RH';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+function dbToTx(r) {
+  return {
+    id:          r.id,
+    date:        r.date,
+    description: r.description,
+    category:    r.category,
+    type:        r.type,
+    amount:      parseFloat(r.amount),
+    performer:   r.performer || '',
+    currency:    r.currency || 'ILS',
+    frequency:   r.frequency,
+    multiplier:  r.multiplier,
+    endPreset:   r.end_preset,
+    customEnd:   r.custom_end || '',
+  };
+}
+
+async function loadTransactions() {
+  showLoading(true);
+  const { data, error } = await sb
+    .from('transactions')
+    .select('*')
+    .order('date', { ascending: false });
+  showLoading(false);
+  if (error) { showDbError(error.message); return; }
+  transactions = (data || []).map(dbToTx);
+  renderAll();
+}
+
+async function insertTransaction(tx) {
+  const { data, error } = await sb
+    .from('transactions')
+    .insert({
+      date:        tx.date,
+      description: tx.description,
+      category:    tx.category,
+      type:        tx.type,
+      amount:      tx.amount,
+      currency:    tx.currency || 'ILS',
+      performer:   tx.performer || null,
+      frequency:   tx.frequency,
+      multiplier:  tx.multiplier,
+      end_preset:  tx.endPreset || 'noEnd',
+      custom_end:  tx.customEnd || null,
+    })
+    .select()
+    .single();
+  if (error) { showDbError(error.message); return null; }
+  return dbToTx(data);
+}
+
+async function deleteTransaction(id) {
+  const { error } = await sb.from('transactions').delete().eq('id', id);
+  if (error) { showDbError(error.message); return false; }
+  return true;
+}
+
+function showLoading(on) {
+  let el = document.getElementById('db-loading');
+  if (!el) return;
+  el.style.display = on ? 'block' : 'none';
+}
+
+function showDbError(msg) {
+  console.error('Supabase error:', msg);
+  const el = document.getElementById('db-error');
+  if (el) { el.textContent = 'שגיאת DB: ' + msg; el.style.display = 'block'; setTimeout(()=>el.style.display='none', 5000); }
+}
+
+// ── State ──────────────────────────────────────────────────────
+const MONTH_NAMES = ["ינו׳","פבר׳","מרץ","אפר׳","מאי","יוני","יולי","אוג׳","ספט׳","אוק׳","נוב׳","דצמ׳"];
+
+const FREQUENCIES = [
+  { key:"once",    label:"חד-פעמי", unit:null,    units:null     },
+  { key:"daily",   label:"יומי",    unit:"יום",   units:"ימים"   },
+  { key:"weekly",  label:"שבועי",   unit:"שבוע",  units:"שבועות" },
+  { key:"monthly", label:"חודשי",   unit:"חודש",  units:"חודשים" },
+  { key:"yearly",  label:"שנתי",    unit:"שנה",   units:"שנים"   },
+];
+
+const PRESETS = [
+  { key:"3months",    badge:"3M", label:"3 חודשים"       },
+  { key:"6months",    badge:"6M", label:"6 חודשים"       },
+  { key:"1year",      badge:"1Y", label:"שנה"            },
+  { key:"fiscalYear", badge:"FY", label:"סוף שנת כספים"  },
+  { key:"noEnd",      badge:"∞",  label:"ללא תאריך סיום" },
+  { key:"custom",     badge:"↗",  label:"תאריך מותאם"    },
+];
+
+const CATEGORIES = ["הכנסות לקוחות","ייעוץ","שיווק","תפעול","תוכנה","נסיעות","שירותים","אחר"];
+
+const TODAY_STR = new Date().toISOString().split("T")[0];
+
+let transactions = [];
+
+let currentFilter = "all";
+
+// form state
+let fType = "income";
+let fFreq = "once";
+let fMult = 1;
+let fEndPreset = "noEnd";
+let fCurrency = "ILS";
+
+// exchange rates (ILS per 1 unit of foreign currency), fallback until API responds
+let rates = { USD: 3.70, EUR: 4.05 };
+
+async function fetchRates() {
+  try {
+    const res = await fetch('https://api.frankfurter.app/latest?from=ILS&to=USD,EUR');
+    const json = await res.json();
+    // json.rates = { USD: X, EUR: Y } meaning 1 ILS = X USD, 1 ILS = Y EUR
+    // so 1 USD = 1/X ILS, 1 EUR = 1/Y ILS
+    rates.USD = +(1 / json.rates.USD).toFixed(4);
+    rates.EUR = +(1 / json.rates.EUR).toFixed(4);
+    // refresh display if modal open
+    updateRatePreview();
+  } catch(e) { /* keep fallback */ }
+}
+
+const CURRENCY_SYMBOLS = { ILS: '₪', USD: '$', EUR: '€' };
+const CURRENCY_NAMES   = { ILS: 'שקל', USD: 'דולר', EUR: 'יורו' };
+
+function toILS(amount, currency) {
+  if (!currency || currency === 'ILS') return amount;
+  return amount * (rates[currency] || 1);
+}
+
+function setCurrency(c) {
+  fCurrency = c;
+  document.querySelectorAll(".cur-btn").forEach(b => b.classList.remove("active"));
+  const btn = document.getElementById("cur-" + c);
+  if (btn) btn.classList.add("active");
+  const sym = CURRENCY_SYMBOLS[c] || '₪';
+  const lbl = document.getElementById("amount-label");
+  if (lbl) lbl.textContent = `סכום (${CURRENCY_NAMES[c] || ''})`;
+  const symEl = document.getElementById("currency-sym");
+  if (symEl) symEl.textContent = sym;
+  updateRatePreview();
+}
+
+function updateRatePreview() {
+  const div = document.getElementById("rate-preview");
+  if (!div) return;
+  if (fCurrency === "ILS") { div.style.display = "none"; return; }
+  const amtEl = document.getElementById("f-amount");
+  const raw = parseFloat(amtEl ? amtEl.value : 0);
+  const sym = CURRENCY_SYMBOLS[fCurrency];
+  const ils = toILS(raw || 1, fCurrency);
+  const base = raw > 0 ? raw : 1;
+  div.style.display = "block";
+  div.textContent = raw > 0
+    ? `${sym}${base.toLocaleString()} ≈ ₪${Math.round(ils).toLocaleString()} לפי שער יומי`
+    : `${sym}1 ≈ ₪${ils.toFixed(2)} לפי שער יומי`;
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+const fmt = (n) =>
+  new Intl.NumberFormat("he-IL", { style:"currency", currency:"ILS", maximumFractionDigits:0 }).format(n);
+
+const parseDate = (d) => new Date(d + "T00:00:00");
+
+const fmtDateHe = (d) => parseDate(d).toLocaleDateString("he-IL", { month:"short", day:"numeric", year:"numeric" });
+
+const addMonths = (d, n) => { const dt = parseDate(d); dt.setMonth(dt.getMonth()+n); return dt.toISOString().split("T")[0]; };
+const addYears  = (d, n) => { const dt = parseDate(d); dt.setFullYear(dt.getFullYear()+n); return dt.toISOString().split("T")[0]; };
+
+function getEndDate(preset, start, custom) {
+  if (preset==="3months")    return addMonths(start, 3);
+  if (preset==="6months")    return addMonths(start, 6);
+  if (preset==="1year")      return addYears(start, 1);
+  if (preset==="fiscalYear") return `${parseDate(start).getFullYear()}-12-31`;
+  if (preset==="custom")     return custom || null;
+  return null;
+}
+
+function countOcc(freq, mult, start, end) {
+  if (!end || freq==="once") return null;
+  const s = parseDate(start), e = parseDate(end);
+  if (e < s) return 0;
+  let n=0, c=new Date(s);
+  while (c <= e && n <= 9999) {
+    n++;
+    if      (freq==="daily")   c.setDate(c.getDate()+mult);
+    else if (freq==="weekly")  c.setDate(c.getDate()+mult*7);
+    else if (freq==="monthly") c.setMonth(c.getMonth()+mult);
+    else if (freq==="yearly")  c.setFullYear(c.getFullYear()+mult);
+  }
+  return n;
+}
+
+function freqLabel(freq, mult) {
+  const f = FREQUENCIES.find(x => x.key===freq);
+  if (!f || freq==="once") return null;
+  return `כל ${mult>1 ? mult+" "+f.units : f.unit}`;
+}
+
+// ── KPI ────────────────────────────────────────────────────────
+function renderKPI() {
+  const inc = transactions.filter(t=>t.type==="income").reduce((s,t)=>s+toILS(t.amount,t.currency),0);
+  const exp = transactions.filter(t=>t.type==="expense").reduce((s,t)=>s+toILS(t.amount,t.currency),0);
+  const net = inc - exp;
+  const margin = inc>0 ? Math.max(0,Math.min(100,Math.round((1-exp/inc)*100))) : 0;
+  const darkClass = net>=0 ? "dark" : "dark-red";
+  const netColor  = net>=0 ? "#10B981" : "#FDA4AF";
+
+  document.getElementById("kpi-grid").innerHTML = `
+    <!-- Income -->
+    <div class="kpi-card">
+      <div class="kpi-top">
+        <div>
+          <p class="kpi-label">סה״כ הכנסות</p>
+          <p class="kpi-value" style="color:#0F172A">${fmt(inc)}</p>
+        </div>
+        <div class="kpi-icon" style="background:#ECFDF5">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+        </div>
+      </div>
+      <div class="kpi-footer">
+        <span style="font-size:12px;color:#059669;font-weight:600">הכנסות מצטברות</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      </div>
+      <div class="kpi-bar" style="background:#10B981"></div>
+    </div>
+
+    <!-- Expenses -->
+    <div class="kpi-card">
+      <div class="kpi-top">
+        <div>
+          <p class="kpi-label">סה״כ הוצאות</p>
+          <p class="kpi-value" style="color:#0F172A">${fmt(exp)}</p>
+        </div>
+        <div class="kpi-icon" style="background:#FFF1F2">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F43F5E" stroke-width="2.5"><line x1="7" y1="7" x2="17" y2="17"/><polyline points="17 7 17 17 7 17"/></svg>
+        </div>
+      </div>
+      <div class="kpi-footer">
+        <span style="font-size:12px;color:#E11D48;font-weight:600">הוצאות מצטברות</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F43F5E" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+      </div>
+      <div class="kpi-bar" style="background:#F43F5E"></div>
+    </div>
+
+    <!-- Net -->
+    <div class="kpi-card ${darkClass}" style="position:relative;overflow:hidden">
+      <svg class="wings-watermark" viewBox="0 0 200 90" fill="none">
+        <path d="M100 82 L58 24 L4 16 L24 28 L48 35 L64 50 L100 82Z" fill="white"/>
+        <path d="M100 82 L66 31 L20 24 L40 35 L58 42 L72 57 L100 82Z" fill="white" fill-opacity="0.65"/>
+        <path d="M100 82 L74 40 L38 33 L54 42 L69 48 L80 61 L100 82Z" fill="white" fill-opacity="0.35"/>
+        <path d="M100 82 L142 24 L196 16 L176 28 L152 35 L136 50 L100 82Z" fill="white"/>
+        <path d="M100 82 L134 31 L180 24 L160 35 L142 42 L128 57 L100 82Z" fill="white" fill-opacity="0.65"/>
+        <path d="M100 82 L126 40 L162 33 L146 42 L131 48 L120 61 L100 82Z" fill="white" fill-opacity="0.35"/>
+        <path d="M90 27 L100 82 L110 27 L104 16 L100 20 L96 16 Z" fill="white" fill-opacity="0.55"/>
+      </svg>
+      <div style="position:relative;z-index:1">
+        <div class="kpi-top">
+          <div>
+            <p class="kpi-label-dark">יתרה נטו</p>
+            <p class="kpi-value" style="color:${netColor}">${net>=0?"+":""}${fmt(net)}</p>
+          </div>
+          <div class="kpi-icon" style="background:rgba(255,255,255,0.09)">
+            ${net>=0
+              ? `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`
+              : `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FDA4AF" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>`
+            }
+          </div>
+        </div>
+        <div style="margin-top:18px">
+          <div class="margin-row">
+            <span style="font-size:11px;font-weight:800;color:${netColor}">${margin}%</span>
+            <span style="font-size:11px;color:#64748B;font-weight:600">שולי רווח</span>
+          </div>
+          <div class="margin-track">
+            <div class="margin-fill" style="background:${netColor};width:${margin}%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── Chart ──────────────────────────────────────────────────────
+function renderChart() {
+  const months = {};
+  transactions.forEach(t => {
+    const m = MONTH_NAMES[parseDate(t.date).getMonth()];
+    if (!months[m]) months[m] = { month:m, income:0, expenses:0 };
+    if (t.type==="income") months[m].income += toILS(t.amount, t.currency);
+    else                   months[m].expenses += toILS(t.amount, t.currency);
+  });
+  const data = Object.values(months).sort((a,b)=>MONTH_NAMES.indexOf(a.month)-MONTH_NAMES.indexOf(b.month));
+
+  const wrap = document.getElementById("chart-svg-wrap");
+  const W = wrap.clientWidth || 800;
+  const H = 260;
+  const PAD = { top:20, right:60, bottom:36, left:16 };
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+
+  const maxVal = Math.max(...data.flatMap(d=>[d.income,d.expenses]),1);
+  const barW = Math.min(32, (innerW / data.length) * 0.35);
+  const gap  = barW * 0.4;
+  const groupW = barW*2 + gap;
+  const colW = innerW / data.length;
+
+  const scaleY = v => innerH - (v/maxVal)*innerH;
+  const yTicks = 4;
+
+  let gridLines = "";
+  for (let i=0; i<=yTicks; i++) {
+    const y = PAD.top + (i/yTicks)*innerH;
+    const val = maxVal*(1 - i/yTicks);
+    gridLines += `
+      <line x1="${PAD.left}" y1="${y}" x2="${W-PAD.right}" y2="${y}" stroke="#F1F5F9" stroke-width="1"/>
+      <text x="${W-PAD.right+6}" y="${y+4}" fill="#CBD5E1" font-size="11" font-family="Heebo">₪${(val/1000).toFixed(0)}K</text>
+    `;
+  }
+
+  let bars = "";
+  let xLabels = "";
+  data.forEach((d, i) => {
+    const cx = PAD.left + i*colW + colW/2;
+    const x1 = cx - groupW/2;
+    const x2 = cx + gap/2 + barW/2;
+    const ih = Math.max((d.income/maxVal)*innerH, 2);
+    const eh = Math.max((d.expenses/maxVal)*innerH, 2);
+    const iy = PAD.top + scaleY(d.income);
+    const ey = PAD.top + scaleY(d.expenses);
+    const r = 4;
+
+    bars += `
+      <rect data-i="${i}" class="bar-income"
+        x="${x1}" y="${iy}" width="${barW}" height="${ih}"
+        fill="#10B981" rx="${r}"
+        onmouseenter="showTip(event,${i},'income',${d.income},'${d.month}')"
+        onmouseleave="hideTip()" style="cursor:pointer" />
+      <rect data-i="${i}" class="bar-expense"
+        x="${x2}" y="${ey}" width="${barW}" height="${eh}"
+        fill="#F43F5E" rx="${r}"
+        onmouseenter="showTip(event,${i},'expense',${d.expenses},'${d.month}')"
+        onmouseleave="hideTip()" style="cursor:pointer" />
+    `;
+    xLabels += `<text x="${cx}" y="${H-8}" text-anchor="middle" fill="#94A3B8" font-size="12" font-weight="600" font-family="Heebo">${d.month}</text>`;
+  });
+
+  wrap.innerHTML = `
+    <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+      ${gridLines}
+      ${bars}
+      ${xLabels}
+    </svg>
+  `;
+}
+
+function showTip(e, i, type, val, month) {
+  const tip = document.getElementById("chart-tooltip");
+  tip.innerHTML = `
+    <p style="color:#64748B;font-weight:700;margin-bottom:10px;font-size:11px;letter-spacing:0.08em">${month}</p>
+    <p style="color:${type==="income"?"#10B981":"#F43F5E"};font-weight:800;margin:4px 0;font-size:14px">
+      ${type==="income"?"↑ הכנסות":"↓ הוצאות"}: ${fmt(val)}
+    </p>
+  `;
+  tip.style.display = "block";
+  const rect = e.target.getBoundingClientRect();
+  const wrap = document.getElementById("chart-svg-wrap").getBoundingClientRect();
+  tip.style.left = (rect.left - wrap.left + rect.width/2 - tip.offsetWidth/2) + "px";
+  tip.style.top  = (rect.top  - wrap.top  - tip.offsetHeight - 8) + "px";
+}
+function hideTip() { document.getElementById("chart-tooltip").style.display = "none"; }
+
+// ── Transactions table ─────────────────────────────────────────
+function renderTransactions() {
+  const sorted = [...transactions].sort((a,b)=>parseDate(b.date)-parseDate(a.date));
+  const filtered = currentFilter==="all" ? sorted : sorted.filter(t=>t.type===currentFilter);
+  const tbody = document.getElementById("tx-tbody");
+  const countEl = document.getElementById("tx-count");
+  countEl.textContent = `${filtered.length} ${filtered.length===1?"עסקה":"עסקאות"}`;
+
+  if (filtered.length===0) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">אין עסקאות עדיין — הוסף את הראשונה למעלה.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(tx => {
+    const fl = freqLabel(tx.frequency, tx.multiplier);
+    const typeLabel = tx.type==="income"?"הכנסה":"הוצאה";
+    const typeChip  = tx.type==="income"?"chip-income":"chip-expense";
+    const typeIcon  = tx.type==="income"
+      ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>`
+      : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="7" y1="7" x2="17" y2="17"/><polyline points="17 7 17 17 7 17"/></svg>`;
+    const amtColor = tx.type==="income"?"#059669":"#E11D48";
+    const amtSign  = tx.type==="income"?"+":"−";
+    return `
+      <tr class="tx-row">
+        <td class="td-date">${fmtDateHe(tx.date)}</td>
+        <td>
+          <div class="td-desc">${tx.description}</div>
+          ${tx.performer ? `<div class="td-freq-sub">👤 ${tx.performer}</div>` : ""}
+          ${fl ? `<div class="td-freq-sub">🔁 ${fl}</div>` : ""}
+        </td>
+        <td><span class="chip chip-cat">${tx.category}</span></td>
+        <td><span class="chip ${typeChip}">${typeIcon} ${typeLabel}</span></td>
+        <td class="td-amount">
+          <span class="amount-val" style="color:${amtColor}">${amtSign}${fmt(toILS(tx.amount,tx.currency))}</span>
+          ${tx.currency && tx.currency!=='ILS' ? `<div class="td-freq-sub">${CURRENCY_SYMBOLS[tx.currency]}${tx.amount.toLocaleString()} ${CURRENCY_NAMES[tx.currency]}</div>` : ''}
+        </td>
+        <td><button class="del-btn" onclick="deleteTx(${tx.id})" title="מחק עסקה">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button></td>
+      </tr>
+    `;
+  }).join("");
+}
+
+async function deleteTx(id) {
+  const ok = await deleteTransaction(id);
+  if (!ok) return;
+  transactions = transactions.filter(t=>t.id!==id);
+  renderAll();
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll(".filter-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.filter===f);
+  });
+  renderTransactions();
+}
+
+// ── Modal ──────────────────────────────────────────────────────
+function openModal() {
+  document.getElementById("modal").style.display = "flex";
+  document.getElementById("f-date").value = TODAY_STR;
+  renderFreqButtons();
+  renderPresets();
+  renderIntervalSection();
+  renderEndSection();
+  updateSaveBtnColor();
+}
+
+function closeModal() {
+  document.getElementById("modal").style.display = "none";
+}
+
+function setType(t) {
+  fType = t;
+  document.getElementById("btn-income").className =
+    "type-btn" + (t==="income" ? " active-income" : "");
+  document.getElementById("btn-expense").className =
+    "type-btn" + (t==="expense" ? " active-expense" : "");
+  updateSaveBtnColor();
+  renderPresets(); // update accent color
+  updateOcc();
+}
+
+function updateSaveBtnColor() {
+  document.getElementById("btn-save").style.background =
+    fType==="income" ? "#10B981" : "#1B2B4B";
+}
+
+function renderFreqButtons() {
+  document.getElementById("freq-wrap").innerHTML = FREQUENCIES.map(f => `
+    <button class="freq-btn ${fFreq===f.key?"active":""}" onclick="selectFreq('${f.key}')">${f.label}</button>
+  `).join("");
+}
+
+function selectFreq(key) {
+  fFreq = key;
+  if (key==="once") { fEndPreset="noEnd"; document.getElementById("f-custom-end").value=""; }
+  renderFreqButtons();
+  renderIntervalSection();
+  renderEndSection();
+}
+
+function renderIntervalSection() {
+  const sec = document.getElementById("section-interval");
+  if (fFreq==="once") {
+    sec.classList.remove("shown"); sec.classList.add("hidden");
+  } else {
+    sec.classList.remove("hidden"); sec.classList.add("shown");
+    const fd = FREQUENCIES.find(x=>x.key===fFreq);
+    document.getElementById("f-mult").value = fMult;
+    document.getElementById("mult-unit").textContent = fMult===1 ? fd.unit : fd.units;
+    const accent = fType==="income"?"#10B981":"#F43F5E";
+    document.getElementById("quick-chips").innerHTML = [1,2,3,6].map(n => `
+      <button class="quick-chip ${fMult===n?"active":""}"
+        style="${fMult===n?`background:${accent};`:"background:#F1F5F9;"}"
+        onclick="setMult(${n})">${n}</button>
+    `).join("");
+  }
+}
+
+function stepMult(d) { setMult(Math.max(1, Math.min(99, fMult+d))); }
+function setMult(v) {
+  if (isNaN(v) || v<1) return;
+  fMult = Math.min(99, Math.max(1, v));
+  renderIntervalSection();
+  updateOcc();
+}
+
+function renderEndSection() {
+  const sec = document.getElementById("section-end");
+  if (fFreq==="once") {
+    sec.classList.remove("shown"); sec.classList.add("hidden"); return;
+  }
+  sec.classList.remove("hidden"); sec.classList.add("shown");
+  renderPresets();
+  updateOcc();
+}
+
+function renderPresets() {
+  const accent = fType==="income"?"#10B981":"#F43F5E";
+  const accentBg = fType==="income"?"#ECFDF5":"#FFF1F2";
+  document.getElementById("preset-wrap").innerHTML = PRESETS.map(p => {
+    const active = fEndPreset===p.key;
+    const style = active
+      ? `border:2px solid ${accent};background:${accentBg};color:${accent};`
+      : "border:2px solid #E2E8F0;background:white;color:#64748B;";
+    return `
+      <button class="preset-btn" style="${style}" onclick="selectPreset('${p.key}')">
+        <span class="preset-badge">${p.badge}</span>${p.label}
+      </button>
+    `;
+  }).join("");
+}
+
+function selectPreset(key) {
+  fEndPreset = key;
+  if (key!=="custom") document.getElementById("f-custom-end").value = "";
+  renderPresets();
+  // custom date reveal
+  const sc = document.getElementById("section-custom-end");
+  if (key==="custom") { sc.classList.remove("hidden"); sc.classList.add("shown"); }
+  else                { sc.classList.remove("shown"); sc.classList.add("hidden"); }
+  updateOcc();
+}
+
+function updateOcc() {
+  const accent = fType==="income"?"#10B981":"#F43F5E";
+  const accentBg = fType==="income"?"#ECFDF5":"#FFF1F2";
+  const startDate = document.getElementById("f-date").value || TODAY_STR;
+  const customEnd = document.getElementById("f-custom-end").value;
+  const endDate = fFreq!=="once" ? getEndDate(fEndPreset, startDate, customEnd) : null;
+
+  // end pill
+  const pillWrap = document.getElementById("end-pill-wrap");
+  if (fEndPreset!=="noEnd" && fEndPreset!=="custom" && endDate) {
+    pillWrap.innerHTML = `
+      <div class="end-pill" style="background:${accentBg};border:1px solid ${accent}33">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${accent}" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span style="font-size:12px;font-weight:700;color:${accent}">
+          תאריך סיום: ${fmtDateHe(endDate)}
+        </span>
+      </div>
+    `;
+  } else {
+    pillWrap.innerHTML = "";
+  }
+
+  // occurrences
+  const occ = countOcc(fFreq, fMult, startDate, endDate);
+  const occWrap = document.getElementById("occ-badge-wrap");
+  occWrap.innerHTML = occ!==null
+    ? `<div class="occ-badge"><span style="font-size:12px;font-weight:800;color:white">🔁 ${occ} הופעות סה״כ</span></div>`
+    : "";
+}
+
+function clearErr(field) {
+  const el = document.getElementById("err-"+field);
+  if (el) { el.style.display="none"; el.textContent=""; }
+  const inp = document.getElementById("f-"+field);
+  if (inp) inp.classList.remove("error");
+}
+
+function resetForm() {
+  fType="income"; fFreq="once"; fMult=1; fEndPreset="noEnd";
+  document.getElementById("f-desc").value="";
+  document.getElementById("f-amount").value="";
+  document.getElementById("f-category").value="הכנסות לקוחות";
+  document.getElementById("f-date").value=TODAY_STR;
+  document.getElementById("f-custom-end").value="";
+  document.getElementById("f-performer").value="";
+  ["desc","amount","customEnd"].forEach(clearErr);
+  document.getElementById("btn-income").className="type-btn active-income";
+  document.getElementById("btn-expense").className="type-btn";
+  setCurrency("ILS");
+  renderFreqButtons();
+  renderIntervalSection();
+  renderEndSection();
+  updateSaveBtnColor();
+}
+
+async function handleAdd() {
+  const desc      = document.getElementById("f-desc").value.trim();
+  const amount    = parseFloat(document.getElementById("f-amount").value);
+  const category  = document.getElementById("f-category").value;
+  const date      = document.getElementById("f-date").value || TODAY_STR;
+  const customEnd = document.getElementById("f-custom-end").value;
+  const performer = document.getElementById("f-performer").value.trim();
+
+  let valid = true;
+  if (!desc) {
+    const el = document.getElementById("err-desc");
+    el.textContent = "נא להזין תיאור";
+    el.style.display = "flex";
+    document.getElementById("f-desc").classList.add("error");
+    valid = false;
+  }
+  if (isNaN(amount) || amount <= 0) {
+    const el = document.getElementById("err-amount");
+    el.textContent = "נא להזין סכום תקין";
+    el.style.display = "flex";
+    document.getElementById("f-amount").classList.add("error");
+    valid = false;
+  }
+  const isRec = fFreq!=="once";
+  if (isRec && fEndPreset==="custom" && !customEnd) {
+    const el = document.getElementById("err-customEnd");
+    el.textContent = "נא לבחור תאריך סיום";
+    el.style.display = "flex";
+    document.getElementById("f-custom-end").classList.add("error");
+    valid = false;
+  }
+  if (isRec && fEndPreset==="custom" && customEnd && customEnd<=date) {
+    const el = document.getElementById("err-customEnd");
+    el.textContent = "תאריך הסיום חייב להיות אחרי תאריך ההתחלה";
+    el.style.display = "flex";
+    document.getElementById("f-custom-end").classList.add("error");
+    valid = false;
+  }
+  if (!valid) return;
+
+  const saved = await insertTransaction({
+    date, description: desc, category,
+    type: fType, amount, currency: fCurrency, performer,
+    frequency: fFreq, multiplier: fMult,
+    endPreset: fEndPreset,
+    customEnd: fEndPreset === 'custom' ? customEnd : '',
+  });
+  if (!saved) return;
+
+  transactions.unshift(saved);
+  closeModal();
+  resetForm();
+  renderAll();
+}
+
+// ── Init ───────────────────────────────────────────────────────
+function renderAll() {
+  renderKPI();
+  renderChart();
+  renderTransactions();
+}
+
+// Date in header
+const d = new Date();
+document.getElementById("today-date").textContent =
+  d.toLocaleDateString("he-IL", { month:"long", day:"numeric", year:"numeric" });
+
+// Re-render chart on resize
+window.addEventListener("resize", () => renderChart());
+
+// Init modal defaults
+document.getElementById("btn-income").className = "type-btn active-income";
+
+// Load exchange rates and data
+fetchRates();
+loadTransactions();
+</script>
+</body>
+</html>
