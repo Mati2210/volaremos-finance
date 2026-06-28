@@ -800,6 +800,83 @@
     .kpi-value { font-size:20px; }
     .cashflow-num { font-size:16px; }
   }
+
+  /* ════════════════════════════════════════════════════════════
+     DARK / NIGHT MODE
+     Palette: page #0E1626 · surface #1A2336 · elevated #1E293B
+              border #2C3A52 · text #E2E8F0 · muted #94A3B8
+     ════════════════════════════════════════════════════════════ */
+  body.dark { background: #0E1626; }
+  body.dark #app-main { background: #0E1626; }
+  body.dark #login-screen { background: #0E1626; }
+
+  /* Top bar */
+  body.dark #top-bar { background: #141E32; border-bottom-color: #2C3A52; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+  body.dark #view-title { color: #E2E8F0; }
+
+  /* Class-based surfaces */
+  body.dark .kpi-card,
+  body.dark .chart-card,
+  body.dark .tx-card,
+  body.dark #cat-card,
+  body.dark .project-card,
+  body.dark .detail-header-card,
+  body.dark .pe-card { background: #1A2336; border-color: #2C3A52; box-shadow: 0 1px 4px rgba(0,0,0,0.25); }
+  body.dark .kpi-value,
+  body.dark .cashflow-num { color: #E2E8F0; }
+  body.dark .tx-header { border-bottom-color: #2C3A52; }
+
+  /* Login card */
+  body.dark .login-card { background: #1A2336; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+  body.dark .login-title { color: #E2E8F0; }
+  body.dark .login-field { background: #0E1626; border-color: #2C3A52; color: #E2E8F0; }
+  body.dark .login-field:focus { background: #141E32; border-color: #3B82F6; }
+
+  /* Modals */
+  body.dark .modal-sheet { background: #1A2336; box-shadow: 0 -24px 64px rgba(0,0,0,0.6); }
+  body.dark .modal-head { border-bottom-color: #2C3A52; }
+  body.dark .drag-handle { background: #2C3A52; }
+  body.dark .btn-close { background: #2C3A52; color: #CBD5E1; }
+  body.dark .field-input { background: #0E1626; border-color: #2C3A52; color: #E2E8F0; }
+  body.dark .field-input:focus { border-color: #3B82F6; }
+
+  /* Tables / rows */
+  body.dark tr.tx-row td { border-bottom-color: #2C3A52; }
+  body.dark tr.tx-row:hover td { background: #141E32; }
+  body.dark .chip-cat { background: #2C3A52; color: #CBD5E1; }
+
+  /* Inline-styled elements (stylesheet !important beats inline) */
+  body.dark [style*="background:white"],
+  body.dark [style*="background: white"],
+  body.dark [style*="background:#fff"],
+  body.dark [style*="background:#FFF"],
+  body.dark [style*="background:#FFFFFF"] { background: #1A2336 !important; }
+  body.dark [style*="background:#F8FAFC"],
+  body.dark [style*="background:#F1F5F9"],
+  body.dark [style*="background:#F0F4F8"],
+  body.dark [style*="background:#F5F8FF"],
+  body.dark [style*="background:#EAEEF3"] { background: #0E1626 !important; }
+  body.dark [style*="color:#0F172A"],
+  body.dark [style*="color:#1B2B4B"],
+  body.dark [style*="color: #0F172A"],
+  body.dark [style*="color: #1B2B4B"],
+  body.dark [style*="color:#0f172a"] { color: #E2E8F0 !important; }
+  body.dark [style*="border:1px solid #E2EAF4"],
+  body.dark [style*="border:1px solid #EBF0F7"],
+  body.dark [style*="border:1px solid #E8EDF5"],
+  body.dark [style*="border:1.5px solid #E2EAF4"],
+  body.dark [style*="border:1px solid #D1D9E4"],
+  body.dark [style*="border-color:#E2EAF4"] { border-color: #2C3A52 !important; }
+
+  /* Keep brand/status colors intact (income green, expense red) — no override needed.
+     Sidebar stays navy by design. */
+  body.dark #sidebar { background: #141E32; }
+
+  /* Theme toggle button in sidebar */
+  .theme-toggle .moon { display: inline-flex; }
+  .theme-toggle .sun { display: none; }
+  body.dark .theme-toggle .moon { display: none; }
+  body.dark .theme-toggle .sun { display: inline-flex; }
 </style>
 </head>
 <body>
@@ -850,6 +927,11 @@
         <div class="sb-user-avatar" id="user-avatar-initials">מ</div>
         <span id="user-greeting-text" class="sb-user-name"></span>
       </div>
+      <button class="sb-item theme-toggle" onclick="toggleTheme()">
+        <span class="moon" style="align-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg></span>
+        <span class="sun" style="align-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></svg></span>
+        <span class="theme-label">מצב לילה</span>
+      </button>
       <button class="sb-item" onclick="doLogout()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         יציאה
@@ -3995,6 +4077,21 @@ function renderAll() {
   renderChartWithProjection();
   renderTransactions();
 }
+
+// ── Theme (dark/night mode) ────────────────────────────────────
+const THEME_KEY = 'vlr_theme';
+function applyTheme(theme) {
+  const dark = theme === 'dark';
+  document.body.classList.toggle('dark', dark);
+  const lbl = document.querySelector('.theme-label');
+  if (lbl) lbl.textContent = dark ? 'מצב יום' : 'מצב לילה';
+}
+function toggleTheme() {
+  const next = document.body.classList.contains('dark') ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+}
+applyTheme(localStorage.getItem(THEME_KEY) || 'light');
 
 // Date in header
 const d = new Date();
