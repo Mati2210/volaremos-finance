@@ -933,6 +933,31 @@
   .status-active, .task-s-done, .exp-tier-low { background:var(--income-soft); color:var(--income); }
   .status-paused, .task-p-high { background:var(--warn-soft); color:var(--warn); }
 
+  /* Dashboard greeting hero */
+  #dash-hero { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:2px; }
+  #dash-greeting { font-family:var(--font-display); font-size:24px; font-weight:700; color:var(--ink); letter-spacing:-0.015em; }
+  #dash-subline { font-size:14px; color:var(--muted); margin-top:4px; }
+  #dash-subline strong { color:var(--ink-2); font-weight:600; }
+  @media (max-width:768px){ #dash-greeting { font-size:20px; } }
+
+  /* Friendly empty states */
+  .es { padding:54px 24px; text-align:center; }
+  .es-icon {
+    width:58px; height:58px; border-radius:18px; margin:0 auto 16px;
+    background:var(--surface-2); border:1px solid var(--hairline);
+    display:flex; align-items:center; justify-content:center; color:var(--navy);
+  }
+  body.dark .es-icon { color:#9DB2D8; }
+  .es-title { font-family:var(--font-display); font-size:17px; font-weight:700; color:var(--ink); margin-bottom:6px; }
+  .es-sub   { font-size:13.5px; color:var(--muted); max-width:360px; margin:0 auto 20px; line-height:1.65; }
+  .es-cta {
+    display:inline-flex; align-items:center; gap:7px; background:var(--navy); color:#fff;
+    border:none; border-radius:var(--r-control); padding:11px 20px;
+    font-family:var(--font-ui); font-size:13.5px; font-weight:600; cursor:pointer;
+    transition:transform .15s, box-shadow .15s, background .15s;
+  }
+  .es-cta:hover { background:var(--navy-700); transform:translateY(-1px); box-shadow:0 6px 16px -4px rgba(22,34,59,.4); }
+
   /* ── Mobile ── */
   @media (max-width:768px) {
     #sidebar { display:none; }
@@ -1132,6 +1157,14 @@
 <div id="db-success" style="display:none;position:fixed;top:64px;left:0;right:0;z-index:40;background:#059669;color:white;text-align:center;padding:10px;font-size:13px;font-weight:700;cursor:pointer" onclick="this.style.display='none'"></div>
 
 <main id="main-content" style="display:none">
+  <!-- Friendly greeting -->
+  <div id="dash-hero">
+    <div>
+      <h1 id="dash-greeting">שלום</h1>
+      <p id="dash-subline">הנה התמונה הפיננסית שלכם להיום.</p>
+    </div>
+  </div>
+
   <!-- KPI cards -->
   <div class="kpi-grid" id="kpi-grid"></div>
 
@@ -2007,6 +2040,28 @@ function updateRatePreview() {
 const fmt = (n) =>
   new Intl.NumberFormat("he-IL", { style:"currency", currency:"ILS", maximumFractionDigits:0 }).format(n);
 
+// Friendly, reusable empty-state row for tables
+function emptyState(colspan, { icon, title, sub, ctaLabel, ctaClick } = {}) {
+  return `<tr><td colspan="${colspan}" style="padding:0;border:none">
+    <div class="es">
+      ${icon ? `<div class="es-icon">${icon}</div>` : ''}
+      <div class="es-title">${title || ''}</div>
+      ${sub ? `<div class="es-sub">${sub}</div>` : ''}
+      ${ctaLabel ? `<button class="es-cta" onclick="${ctaClick}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        ${ctaLabel}</button>` : ''}
+    </div>
+  </td></tr>`;
+}
+// A few SVG glyphs used by empty states
+const ES_ICONS = {
+  wallet:  `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1"/><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H5a2 2 0 0 1-2-2Z"/><circle cx="16.5" cy="13" r="1.2" fill="currentColor" stroke="none"/></svg>`,
+  search:  `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>`,
+  folder:  `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>`,
+  check:   `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
+  receipt: `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3v18l2-1.4L9 21l2-1.4L13 21l2-1.4L17 21l2-1.4V3l-2 1.4L15 3l-2 1.4L11 3 9 4.4 7 3Z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="14" y2="13"/></svg>`,
+};
+
 const parseDate = (d) => new Date(d + "T00:00:00");
 
 const fmtDateHe = (d) => parseDate(d).toLocaleDateString("he-IL", { month:"short", day:"numeric", year:"numeric" });
@@ -2289,7 +2344,20 @@ function renderTransactions() {
   countEl.textContent = `${filtered.length} ${filtered.length === 1 ? 'עסקה' : 'עסקאות'}`;
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">אין עסקאות עדיין — הוסף את הראשונה למעלה.</td></tr>`;
+    const isFiltered = currentFilter !== 'all' || !!searchQuery || !!filterMonth || !!filterProjectId;
+    tbody.innerHTML = isFiltered
+      ? emptyState(6, {
+          icon: ES_ICONS.search,
+          title: 'לא נמצאו עסקאות',
+          sub: 'אף עסקה לא תואמת את הסינון הנוכחי. נסו לנקות את החיפוש או לבחור חודש אחר.',
+          ctaLabel: 'ניקוי הסינון', ctaClick: 'resetTxFilters()'
+        })
+      : emptyState(6, {
+          icon: ES_ICONS.wallet,
+          title: 'בואו נתחיל לעקוב אחרי הכסף',
+          sub: 'כל הכנסה והוצאה שתוסיפו תופיע כאן — עם גרפים, סיכומים ופירוט לפי קטגוריה, אוטומטית.',
+          ctaLabel: 'הוספת העסקה הראשונה', ctaClick: 'openModal()'
+        });
     return;
   }
 
@@ -2397,6 +2465,15 @@ function setFilter(f) {
 function setSearchQuery(v) { searchQuery = v.trim().toLowerCase(); renderTransactions(); }
 function setMonthFilter(v) { filterMonth = v; renderTransactions(); }
 function setProjectFilter(v) { filterProjectId = v; renderTransactions(); }
+
+// Clear every transaction filter at once (used by the "no results" empty state)
+function resetTxFilters() {
+  searchQuery = ""; filterMonth = ""; filterProjectId = "";
+  const s = document.getElementById('tx-search'); if (s) s.value = "";
+  const m = document.getElementById('tx-month-filter'); if (m) m.value = "";
+  const p = document.getElementById('tx-project-filter'); if (p) p.value = "";
+  setFilter('all');
+}
 
 function populateFilterDropdowns() {
   // Month filter — unique YYYY-MM values from transactions
@@ -2692,14 +2769,18 @@ function generateOccurrences(start, freq, mult, endPreset, customEnd) {
     return e;
   })();
   const dates = [];
+  // Guard against runaway inserts: a missing/zero multiplier or an
+  // unrecognized frequency must never leave the cursor unadvanced.
+  const step = Number(mult) > 0 ? Number(mult) : 1;
+  if (!['daily','weekly','monthly','yearly'].includes(freq)) return dates;
   let cur = new Date(start + "T00:00:00");
   const end = new Date(effectiveEnd + "T00:00:00");
   while (cur <= end && dates.length <= 9999) {
     dates.push(cur.toISOString().split("T")[0]);
-    if      (freq==="daily")   cur.setDate(cur.getDate()+mult);
-    else if (freq==="weekly")  cur.setDate(cur.getDate()+mult*7);
-    else if (freq==="monthly") cur.setMonth(cur.getMonth()+mult);
-    else if (freq==="yearly")  cur.setFullYear(cur.getFullYear()+mult);
+    if      (freq==="daily")   cur.setDate(cur.getDate()+step);
+    else if (freq==="weekly")  cur.setDate(cur.getDate()+step*7);
+    else if (freq==="monthly") cur.setMonth(cur.getMonth()+step);
+    else if (freq==="yearly")  cur.setFullYear(cur.getFullYear()+step);
   }
   return dates;
 }
@@ -3184,12 +3265,12 @@ function renderProjectsView() {
   const countEl = document.getElementById('proj-count');
 
   if (projects.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5">
-      <div class="projects-empty" style="border:none;box-shadow:none">
-        <div class="projects-empty-icon">📁</div>
-        <h3>אין פרויקטים עדיין</h3>
-        <p>לחץ על "פרויקט חדש" כדי להתחיל</p>
-      </div></td></tr>`;
+    tbody.innerHTML = emptyState(5, {
+      icon: ES_ICONS.folder,
+      title: 'אין עדיין פרויקטים',
+      sub: 'צרו פרויקט כדי לנהל לקוחות, לעקוב אחרי הוצאות ולהפיק חשבוניות במקום אחד.',
+      ctaLabel: 'יצירת פרויקט חדש', ctaClick: 'openAddProjectModal()'
+    });
     countEl.textContent = '';
     return;
   }
@@ -3271,7 +3352,12 @@ function renderProjectDetail(project, standaloneExp, linkedTx = [], projectTasks
 
   // Build standalone expense rows
   const expRows = (standaloneExp.length === 0 && linkedExpenses.length === 0)
-    ? `<tr class="empty-row"><td colspan="4">אין הוצאות עדיין — לחץ "הוסף הוצאה" כדי להתחיל.</td></tr>`
+    ? emptyState(4, {
+        icon: ES_ICONS.receipt,
+        title: 'אין עדיין הוצאות בפרויקט',
+        sub: 'הוסיפו הוצאות כדי לראות את הרווחיות האמיתית של הפרויקט מול ההכנסות.',
+        ctaLabel: 'הוספת הוצאה', ctaClick: 'openAddPEModal()'
+      })
     : [
         // Linked expense transactions (from main ledger)
         ...linkedExpenses.map(t => {
@@ -3449,7 +3535,7 @@ function renderProjectDetail(project, standaloneExp, linkedTx = [], projectTasks
         <table>
           <thead><tr><th style="width:42px"></th><th>משימה</th><th>מבוצע על ידי</th><th>תאריך יעד</th><th>עדיפות</th><th></th></tr></thead>
           <tbody>${projectTasks.length === 0
-            ? '<tr class="empty-row"><td colspan="6">אין משימות — לחץ "הוסף משימה" כדי להתחיל.</td></tr>'
+            ? emptyState(6, { icon: ES_ICONS.check, title: 'אין עדיין משימות', sub: 'הוסיפו משימות כדי לעקוב אחרי ההתקדמות בפרויקט.', ctaLabel: 'הוספת משימה', ctaClick: `openTaskModal(${project.id})` })
             : projectTasks.map(task => {
                 const isDone    = task.status === 'done';
                 const isOverdue = !isDone && task.dueDate && task.dueDate < TODAY_STR;
@@ -4032,6 +4118,7 @@ async function showApp() {
   if (session) {
     const email = session.user.email?.toLowerCase() || '';
     const name  = USER_NAMES[email] || email.split('@')[0];
+    userFirstName = name;
     document.getElementById('user-greeting-text').textContent = name;
     const initials = name.charAt(0);
     const avatarEl = document.getElementById('user-avatar-initials');
@@ -4131,7 +4218,7 @@ function renderChartWithProjection() {
   const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
   transactions
-    .filter(t => !t.parentId && t.frequency !== 'once' && t.date <= TODAY_STR)
+    .filter(t => !t.parentId && ['daily','weekly','monthly','yearly'].includes(t.frequency) && t.date <= TODAY_STR)
     .forEach(t => {
       const endDate = getEndDate(t.endPreset, t.date, t.customEnd) || yearEnd;
       const projEnd = endDate < yearEnd ? endDate : yearEnd;
@@ -4147,10 +4234,12 @@ function renderChartWithProjection() {
           if (t.type === 'income') months[key].projIncome   += toILS(t.amount, t.currency);
           else                     months[key].projExpenses += toILS(t.amount, t.currency);
         }
-        if      (t.frequency === 'daily')   cur.setDate(cur.getDate() + t.multiplier);
-        else if (t.frequency === 'weekly')  cur.setDate(cur.getDate() + t.multiplier * 7);
-        else if (t.frequency === 'monthly') cur.setMonth(cur.getMonth() + t.multiplier);
-        else if (t.frequency === 'yearly')  cur.setFullYear(cur.getFullYear() + t.multiplier);
+        const step = t.multiplier > 0 ? t.multiplier : 1;
+        if      (t.frequency === 'daily')   cur.setDate(cur.getDate() + step);
+        else if (t.frequency === 'weekly')  cur.setDate(cur.getDate() + step * 7);
+        else if (t.frequency === 'monthly') cur.setMonth(cur.getMonth() + step);
+        else if (t.frequency === 'yearly')  cur.setFullYear(cur.getFullYear() + step);
+        else break; // unknown frequency — never spin
       }
     });
 
@@ -4238,6 +4327,32 @@ function renderAll() {
   renderCategoryBreakdown();
   renderChartWithProjection();
   renderTransactions();
+  updateDashHero();
+}
+
+// Warm, time-aware, data-aware dashboard greeting
+let userFirstName = '';
+function updateDashHero() {
+  const gEl = document.getElementById('dash-greeting');
+  const sEl = document.getElementById('dash-subline');
+  if (!gEl || !sEl) return;
+  const h = new Date().getHours();
+  const part = h < 12 ? 'בוקר טוב' : h < 17 ? 'צהריים טובים' : h < 21 ? 'ערב טוב' : 'לילה טוב';
+  gEl.textContent = userFirstName ? `${part}, ${userFirstName}` : part;
+
+  // This month's flow
+  const ym = new Date().toISOString().slice(0, 7);
+  const inc = transactions.filter(t => t.type === 'income'  && t.date.startsWith(ym)).reduce((s,t)=>s+toILS(t.amount,t.currency),0);
+  const exp = transactions.filter(t => t.type === 'expense' && t.date.startsWith(ym)).reduce((s,t)=>s+toILS(t.amount,t.currency),0);
+  if (inc === 0 && exp === 0) {
+    sEl.innerHTML = transactions.length === 0
+      ? 'בואו נוסיף את העסקה הראשונה כדי להתחיל לעקוב.'
+      : 'אין עדיין תנועות החודש — הנה הסיכום הכולל שלכם.';
+    return;
+  }
+  const net = inc - exp;
+  const mood = net >= 0 ? 'במאזן חיובי' : 'במאזן שלילי';
+  sEl.innerHTML = `החודש נכנסו <strong>${fmt(inc)}</strong> ויצאו <strong>${fmt(exp)}</strong> — אתם ${mood}.`;
 }
 
 // ── Theme (dark/night mode) ────────────────────────────────────
@@ -4799,8 +4914,10 @@ function renderTasksView() {
   if (taskProjectFilter) filtered = filtered.filter(t => String(t.projectId) === taskProjectFilter);
   document.getElementById('task-count').textContent = `${filtered.length} משימות`;
   if (filtered.length === 0) {
-    document.getElementById('task-tbody').innerHTML =
-      `<tr class="empty-row"><td colspan="7">אין משימות — לחץ "הוסף משימה" כדי להתחיל.</td></tr>`;
+    const isFiltered = taskFilter !== 'all' || !!taskProjectFilter;
+    document.getElementById('task-tbody').innerHTML = isFiltered
+      ? emptyState(7, { icon: ES_ICONS.search, title: 'אין משימות בתצוגה הזו', sub: 'אף משימה לא תואמת את הסינון. נסו תצוגה אחרת.' })
+      : emptyState(7, { icon: ES_ICONS.check, title: 'הכול נקי כאן', sub: 'אין משימות פתוחות. הוסיפו משימה כדי לארגן את העבודה שלכם.', ctaLabel: 'הוספת משימה', ctaClick: 'openTaskModal()' });
     return;
   }
   document.getElementById('task-tbody').innerHTML = filtered.map(task => {
