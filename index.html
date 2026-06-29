@@ -958,6 +958,36 @@
   }
   .es-cta:hover { background:var(--navy-700); transform:translateY(-1px); box-shadow:0 6px 16px -4px rgba(22,34,59,.4); }
 
+  /* Amount colored badges */
+  .amount-expense { background:var(--expense-soft); color:var(--expense) !important; padding:3px 10px; border-radius:8px; }
+  .amount-income  { background:var(--income-soft);  color:var(--income)  !important; padding:3px 10px; border-radius:8px; }
+
+  /* Sortable table headers */
+  .th-sort { cursor:pointer; user-select:none; transition:color .15s; }
+  .th-sort:hover { color:var(--ink-2); }
+  .th-sort.sort-asc::after  { content:' ↑'; font-size:10px; }
+  .th-sort.sort-desc::after { content:' ↓'; font-size:10px; }
+  .th-sort.sorted { color:var(--navy); }
+  body.dark .th-sort.sorted { color:#9DB2D8; }
+
+  /* Mini stats row (dashboard second row) */
+  .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  @media (max-width:1080px) { .stats-row { grid-template-columns:repeat(2,1fr); } }
+  .stat-mini { background:var(--surface); border:1px solid var(--hairline); border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:12px; box-shadow:var(--shadow-sm); }
+  .stat-mini-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .stat-mini-label { font-size:10.5px; font-weight:600; color:var(--muted); letter-spacing:0.04em; }
+  .stat-mini-value { font-family:var(--font-display); font-size:20px; font-weight:700; color:var(--ink); letter-spacing:-0.01em; direction:ltr; margin-top:2px; }
+  .stat-mini-sub { font-size:10px; color:var(--muted); margin-top:1px; }
+
+  /* Task bulk action buttons */
+  .task-bulk-btns { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .task-bulk-btn { display:inline-flex; align-items:center; gap:5px; padding:7px 13px; border-radius:var(--r-control); font-size:12px; font-weight:600; border:1px solid var(--hairline-2); background:var(--surface-2); color:var(--ink-2); cursor:pointer; transition:background .15s, color .15s; }
+  .task-bulk-btn:hover { background:var(--hairline); color:var(--ink); }
+  .task-bulk-btn.btn-danger { border-color:rgba(229,56,78,0.3); color:var(--expense); }
+  .task-bulk-btn.btn-danger:hover { background:var(--expense-soft); }
+  .task-bulk-btn.btn-success { border-color:rgba(14,159,110,0.3); color:var(--income); }
+  .task-bulk-btn.btn-success:hover { background:var(--income-soft); }
+
   /* ── Mobile ── */
   @media (max-width:768px) {
     #sidebar { display:none; }
@@ -1167,6 +1197,8 @@
 
   <!-- KPI cards -->
   <div class="kpi-grid" id="kpi-grid"></div>
+  <!-- Mini stats row -->
+  <div class="stats-row" id="dash-stats"></div>
 
   <!-- Category Breakdown -->
   <div class="chart-card" id="cat-card" style="display:none"></div>
@@ -1219,8 +1251,11 @@
       <table>
         <thead>
           <tr>
-            <th>תאריך</th><th>תיאור</th><th>קטגוריה</th><th>סוג</th>
-            <th class="amount-col">סכום</th><th></th>
+            <th class="th-sort" id="th-date" onclick="setTxSort('date')">תאריך</th>
+            <th class="th-sort" id="th-description" onclick="setTxSort('description')">תיאור</th>
+            <th>קטגוריה</th><th>סוג</th>
+            <th class="amount-col th-sort" id="th-amount" onclick="setTxSort('amount')">סכום</th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="tx-tbody"></tbody>
@@ -1317,6 +1352,20 @@
           <select id="task-project-filter" class="tx-filter-select" onchange="setTaskProjectFilter(this.value)">
             <option value="">כל הפרויקטים</option>
           </select>
+          <div class="task-bulk-btns">
+            <button class="task-bulk-btn btn-success" onclick="bulkTasksMarkDone()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              סמן הכל כבוצע
+            </button>
+            <button class="task-bulk-btn" onclick="bulkTasksReset()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>
+              אפס סימונים
+            </button>
+            <button class="task-bulk-btn btn-danger" onclick="bulkTasksDeleteDone()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+              מחק שהושלמו
+            </button>
+          </div>
         </div>
       </div>
       <div class="tx-table-wrap">
@@ -1324,11 +1373,11 @@
           <thead>
             <tr>
               <th style="width:42px"></th>
-              <th>משימה</th>
+              <th class="th-sort" id="th-task-title" onclick="setTaskSort('title')">משימה</th>
               <th>פרויקט</th>
               <th>מבוצע על ידי</th>
-              <th>תאריך יעד</th>
-              <th>עדיפות</th>
+              <th class="th-sort" id="th-task-dueDate" onclick="setTaskSort('dueDate')">תאריך יעד</th>
+              <th class="th-sort" id="th-task-priority" onclick="setTaskSort('priority')">עדיפות</th>
               <th></th>
             </tr>
           </thead>
@@ -2327,7 +2376,13 @@ function scrollToMaster(parentId) {
 }
 
 function renderTransactions() {
-  const sorted = [...transactions].sort((a,b) => parseDate(b.date) - parseDate(a.date));
+  const sorted = [...transactions].sort((a, b) => {
+    if (txSortField === 'date')        return txSortDir * (parseDate(a.date) - parseDate(b.date));
+    if (txSortField === 'amount')      return txSortDir * (toILS(a.amount, a.currency) - toILS(b.amount, b.currency));
+    if (txSortField === 'description') return txSortDir * a.description.localeCompare(b.description, 'he');
+    return 0;
+  });
+  updateTxSortHeaders();
   let filtered = currentFilter === 'all' ? sorted : sorted.filter(t => t.type === currentFilter);
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
@@ -2397,7 +2452,7 @@ function renderTransactions() {
           <td><span class="chip chip-cat" style="opacity:0.7">${tx.category}</span></td>
           <td><span class="chip ${typeChip}" style="opacity:0.7">${typeIcon} ${typeLabel}</span></td>
           <td class="td-amount">
-            <span class="amount-val" style="color:${amtColor};opacity:0.7">${amtSign}${fmt(toILS(tx.amount, tx.currency))}</span>
+            <span class="amount-val ${tx.type==='expense'?'amount-expense':'amount-income'}" style="opacity:0.75">${amtSign}${fmt(toILS(tx.amount, tx.currency))}</span>
             ${tx.currency && tx.currency !== 'ILS' ? `<div class="td-freq-sub">${CURRENCY_SYMBOLS[tx.currency]}${tx.amount.toLocaleString()} ${CURRENCY_NAMES[tx.currency]}</div>` : ''}
           </td>
           <td><div class="action-cell">
@@ -2420,7 +2475,7 @@ function renderTransactions() {
         <td><span class="chip chip-cat">${tx.category}</span></td>
         <td><span class="chip ${typeChip}">${typeIcon} ${typeLabel}</span></td>
         <td class="td-amount">
-          <span class="amount-val" style="color:${amtColor}">${amtSign}${fmt(toILS(tx.amount, tx.currency))}</span>
+          <span class="amount-val ${tx.type==='expense'?'amount-expense':'amount-income'}">${amtSign}${fmt(toILS(tx.amount, tx.currency))}</span>
           ${tx.currency && tx.currency !== 'ILS' ? `<div class="td-freq-sub">${CURRENCY_SYMBOLS[tx.currency]}${tx.amount.toLocaleString()} ${CURRENCY_NAMES[tx.currency]}</div>` : ''}
         </td>
         <td><div class="action-cell">
@@ -2473,6 +2528,81 @@ function resetTxFilters() {
   const m = document.getElementById('tx-month-filter'); if (m) m.value = "";
   const p = document.getElementById('tx-project-filter'); if (p) p.value = "";
   setFilter('all');
+}
+
+function setTxSort(field) {
+  if (txSortField === field) { txSortDir *= -1; }
+  else { txSortField = field; txSortDir = field === 'description' ? 1 : -1; }
+  renderTransactions();
+}
+
+function updateTxSortHeaders() {
+  ['date', 'description', 'amount'].forEach(f => {
+    const el = document.getElementById('th-' + f);
+    if (!el) return;
+    el.classList.toggle('sorted',    f === txSortField);
+    el.classList.toggle('sort-asc',  f === txSortField && txSortDir === 1);
+    el.classList.toggle('sort-desc', f === txSortField && txSortDir === -1);
+  });
+}
+
+function renderDashStats() {
+  const el = document.getElementById('dash-stats');
+  if (!el) return;
+  const ym = new Date().toISOString().slice(0, 7);
+  const monthInc  = transactions.filter(t => t.type === 'income'  && t.date.startsWith(ym)).reduce((s,t)=>s+toILS(t.amount,t.currency),0);
+  const monthExp  = transactions.filter(t => t.type === 'expense' && t.date.startsWith(ym)).reduce((s,t)=>s+toILS(t.amount,t.currency),0);
+  const monthTxs  = transactions.filter(t => t.date.startsWith(ym) && !t.parentId).length;
+
+  // Average monthly income over last 3 months (excluding current)
+  const months = [...new Set(transactions.map(t=>t.date.slice(0,7)))].filter(m=>m<ym).sort().slice(-3);
+  const avgInc = months.length
+    ? months.reduce((s,m) => s + transactions.filter(t=>t.type==='income'&&t.date.startsWith(m)).reduce((ss,t)=>ss+toILS(t.amount,t.currency),0), 0) / months.length
+    : 0;
+
+  // Largest single expense ever
+  const maxExp = transactions.filter(t=>t.type==='expense').reduce((mx,t)=>Math.max(mx,toILS(t.amount,t.currency)),0);
+
+  el.innerHTML = `
+    <div class="stat-mini">
+      <div class="stat-mini-icon" style="background:var(--income-soft)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--income)" stroke-width="2.5"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+      </div>
+      <div class="stat-mini-body">
+        <div class="stat-mini-label">הכנסות החודש</div>
+        <div class="stat-mini-value" style="color:var(--income)">${fmt(monthInc)}</div>
+      </div>
+    </div>
+    <div class="stat-mini">
+      <div class="stat-mini-icon" style="background:var(--expense-soft)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--expense)" stroke-width="2.5"><line x1="7" y1="7" x2="17" y2="17"/><polyline points="17 7 17 17 7 17"/></svg>
+      </div>
+      <div class="stat-mini-body">
+        <div class="stat-mini-label">הוצאות החודש</div>
+        <div class="stat-mini-value" style="color:var(--expense)">${fmt(monthExp)}</div>
+      </div>
+    </div>
+    <div class="stat-mini">
+      <div class="stat-mini-icon" style="background:#EFF6FF">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      </div>
+      <div class="stat-mini-body">
+        <div class="stat-mini-label">עסקאות החודש</div>
+        <div class="stat-mini-value">${monthTxs}</div>
+        <div class="stat-mini-sub">עסקאות חדשות</div>
+      </div>
+    </div>
+    <div class="stat-mini">
+      <div class="stat-mini-icon" style="background:#F5F3FF">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      </div>
+      <div class="stat-mini-body">
+        <div class="stat-mini-label">ממוצע חודשי הכנסות</div>
+        <div class="stat-mini-value">${avgInc > 0 ? fmt(avgInc) : '—'}</div>
+        <div class="stat-mini-sub">${months.length > 0 ? `לפי ${months.length} חודשים אחרונים` : 'אין עדיין נתונים'}</div>
+      </div>
+    </div>
+  `;
 }
 
 function populateFilterDropdowns() {
@@ -2964,6 +3094,11 @@ let tasks = [];
 let editingTaskId = null;
 let taskFilter = 'all';
 let taskProjectFilter = '';
+
+let txSortField   = 'date';
+let txSortDir     = -1; // -1 = desc, 1 = asc
+let taskSortField = 'dueDate';
+let taskSortDir   = 1;
 
 const STATUS_TASK_LABELS = { open: 'פתוחה', in_progress: 'בביצוע', done: 'הושלמה' };
 const PRIORITY_LABELS    = { low: 'נמוכה', normal: 'רגילה', high: 'גבוהה', urgent: 'דחופה' };
@@ -4324,6 +4459,7 @@ function renderChartWithProjection() {
 
 function renderAll() {
   renderKPI();
+  renderDashStats();
   renderCategoryBreakdown();
   renderChartWithProjection();
   renderTransactions();
@@ -4902,6 +5038,8 @@ function renderTaskKPI() {
   `;
 }
 
+const PRIORITY_ORDER = { urgent:4, high:3, normal:2, low:1 };
+
 function renderTasksView() {
   renderTaskKPI();
   populateTaskProjectFilterDropdown();
@@ -4912,6 +5050,19 @@ function renderTasksView() {
   else if (taskFilter === 'done')   filtered = filtered.filter(t => t.status === 'done');
   else if (taskFilter === 'overdue') filtered = filtered.filter(t => t.status !== 'done' && t.dueDate && t.dueDate < today);
   if (taskProjectFilter) filtered = filtered.filter(t => String(t.projectId) === taskProjectFilter);
+
+  filtered.sort((a, b) => {
+    if (taskSortField === 'dueDate') {
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return taskSortDir * a.dueDate.localeCompare(b.dueDate);
+    }
+    if (taskSortField === 'priority') return taskSortDir * ((PRIORITY_ORDER[b.priority]||2) - (PRIORITY_ORDER[a.priority]||2));
+    if (taskSortField === 'title')    return taskSortDir * a.title.localeCompare(b.title, 'he');
+    return 0;
+  });
+  updateTaskSortHeaders();
   document.getElementById('task-count').textContent = `${filtered.length} משימות`;
   if (filtered.length === 0) {
     const isFiltered = taskFilter !== 'all' || !!taskProjectFilter;
@@ -4969,6 +5120,55 @@ function setTaskFilter(f) {
 
 function setTaskProjectFilter(v) {
   taskProjectFilter = v;
+  renderTasksView();
+}
+
+function setTaskSort(field) {
+  if (taskSortField === field) { taskSortDir *= -1; }
+  else { taskSortField = field; taskSortDir = field === 'priority' ? -1 : 1; }
+  renderTasksView();
+}
+
+function updateTaskSortHeaders() {
+  ['title', 'dueDate', 'priority'].forEach(f => {
+    const el = document.getElementById('th-task-' + f);
+    if (!el) return;
+    el.classList.toggle('sorted',    f === taskSortField);
+    el.classList.toggle('sort-asc',  f === taskSortField && taskSortDir === 1);
+    el.classList.toggle('sort-desc', f === taskSortField && taskSortDir === -1);
+  });
+}
+
+async function bulkTasksMarkDone() {
+  const pending = tasks.filter(t => t.status !== 'done');
+  if (!pending.length) return;
+  if (!confirm(`לסמן ${pending.length} משימות כבוצעו?`)) return;
+  for (const t of pending) {
+    const updated = await updateTask(t.id, { status: 'done' });
+    if (updated) { const i = tasks.findIndex(x => x.id === t.id); if (i >= 0) tasks[i] = updated; }
+  }
+  renderTasksView();
+}
+
+async function bulkTasksReset() {
+  const done = tasks.filter(t => t.status === 'done');
+  if (!done.length) return;
+  if (!confirm(`לאפס ${done.length} משימות שהושלמו חזרה לפתוחות?`)) return;
+  for (const t of done) {
+    const updated = await updateTask(t.id, { status: 'open' });
+    if (updated) { const i = tasks.findIndex(x => x.id === t.id); if (i >= 0) tasks[i] = updated; }
+  }
+  renderTasksView();
+}
+
+async function bulkTasksDeleteDone() {
+  const done = tasks.filter(t => t.status === 'done');
+  if (!done.length) return;
+  if (!confirm(`למחוק ${done.length} משימות שהושלמו לצמיתות?`)) return;
+  for (const t of done) {
+    const ok = await deleteTask(t.id);
+    if (ok) tasks = tasks.filter(x => x.id !== t.id);
+  }
   renderTasksView();
 }
 
