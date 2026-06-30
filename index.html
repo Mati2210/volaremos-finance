@@ -3830,7 +3830,7 @@ function renderProjectDetail(project, standaloneExp, linkedTx = [], projectTasks
           <thead><tr><th style="width:42px"></th><th>משימה</th><th>מבוצע על ידי</th><th>תאריך יעד</th><th>עדיפות</th><th></th></tr></thead>
           <tbody>${projectTasks.length === 0
             ? emptyState(6, { icon: ES_ICONS.check, title: 'אין עדיין משימות', sub: 'הוסיפו משימות כדי לעקוב אחרי ההתקדמות בפרויקט.', ctaLabel: 'הוספת משימה', ctaClick: `openTaskModal(${project.id})` })
-            : projectTasks.map(task => {
+            : [...projectTasks].sort((a, b) => (a.status === 'done' ? 1 : 0) - (b.status === 'done' ? 1 : 0)).map(task => {
                 const isDone    = task.status === 'done';
                 const isOverdue = !isDone && task.dueDate && task.dueDate < TODAY_STR;
                 return `<tr class="tx-row task-row${isDone ? ' is-done' : ''}">
