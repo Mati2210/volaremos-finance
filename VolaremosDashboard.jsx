@@ -365,7 +365,7 @@ export default function VolaremosDashboard() {
 
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <img
-              src="./volaremos-logo.png"
+              src="./volaremos-logo-full.jpeg"
               alt="Volaremos"
               style={{ height: 38, width: "auto", objectFit: "contain", flexShrink: 0 }}
             />
